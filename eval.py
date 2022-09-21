@@ -3,13 +3,19 @@ from numpy import argmax
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 import torch
-from model import CNN
 from data import prepare_data
 
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 # evaluate the model
+
+
 def evaluate_model(test_dl, model):
     predictions, actuals = list(), list()
     for i, (inputs, targets) in tqdm(enumerate(test_dl)):
+        inputs = inputs.to(device)
+        targets = targets.to(device)
         # evaluate the model on the test set
         yhat = model(inputs)
         # retrieve numpy array
@@ -28,13 +34,14 @@ def evaluate_model(test_dl, model):
     acc = accuracy_score(actuals, predictions)
     return acc
 
+
 # prepare the data
 path = '~/.torch/datasets/mnist'
 train_dl, test_dl = prepare_data(path)
 print(len(train_dl.dataset), len(test_dl.dataset))
 
 # define the network
-PATH = '/home/saad/repos/radioml/2018/terminal/model'
+PATH = '/home/saad/repos/Multiclass-NN-terminal-setup/model'
 model = torch.load(PATH)
 model.eval()
 
