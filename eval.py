@@ -36,7 +36,7 @@ train_dl, test_dl = prepare_data(path)
 print(len(train_dl.dataset), len(test_dl.dataset))
 
 # define the network
-PATH = '/home/saad/repos/radioml/2018/terminal/model'
+PATH = '/home/saadmann/repos/Multiclass-NN-terminal-setup/model'
 model = torch.load(PATH)
 model.eval()
 

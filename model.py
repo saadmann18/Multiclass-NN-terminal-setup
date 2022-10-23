@@ -5,17 +5,12 @@ from torch.nn import ReLU
 from torch.nn import Softmax
 from torch.nn import Module
 
-<<<<<<< HEAD
 from torch.nn.init import kaiming_uniform_
 from torch.nn.init import xavier_uniform_
-=======
-
-from torch.nn.init import kaiming_uniform_
-from torch.nn.init import xavier_uniform_
-
->>>>>>> 0c8fc4576d1db38c52866dafd97354194a4d8a9c
 
 # model definition
+
+
 class CNN(Module):
     # define model elements
     def __init__(self, n_channels):
