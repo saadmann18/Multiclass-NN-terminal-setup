@@ -6,20 +6,36 @@ from tqdm import tqdm
 from model import CNN
 from data import prepare_data
 
+<<<<<<< HEAD
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(device)
+=======
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+>>>>>>> 0c8fc4576d1db38c52866dafd97354194a4d8a9c
 # train the model
+
+
 def train_model(train_dl, model):
     # define the optimization
     criterion = CrossEntropyLoss()
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
     # enumerate epochs
+<<<<<<< HEAD
     for epoch in range(10):
+=======
+    for epoch in range(2):
+
+>>>>>>> 0c8fc4576d1db38c52866dafd97354194a4d8a9c
         # enumerate mini batches
         for i, (inputs, targets) in tqdm(enumerate(train_dl)):
             inputs = inputs.to(device)
             targets = targets.to(device)
+<<<<<<< HEAD
 	    # clear the gradients
+=======
+            # clear the gradients
+>>>>>>> 0c8fc4576d1db38c52866dafd97354194a4d8a9c
             optimizer.zero_grad()
 	    # compute the model output
             yhat = model(inputs)
@@ -30,6 +46,10 @@ def train_model(train_dl, model):
 	    # update model weights
             optimizer.step()
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0c8fc4576d1db38c52866dafd97354194a4d8a9c
 # prepare the data
 path = '~/.torch/datasets/mnist'
 train_dl, test_dl = prepare_data(path)
@@ -40,11 +60,14 @@ model = CNN(1).to(device)
 # # train the model
 train_model(train_dl, model)
 
+<<<<<<< HEAD
 PATH = '/home/saadmann/repos/Multiclass-NN-terminal-setup/model'
+=======
+PATH = '/home/saad/repos/Multiclass-NN-terminal-setup/model'
+>>>>>>> 0c8fc4576d1db38c52866dafd97354194a4d8a9c
 
 torch.save(model, PATH)
 
 ##########
 
 # evaluate the model
-
