@@ -67,14 +67,10 @@ def train_model(train_dl, model, epochs: int = 10):
 
             optimizer.zero_grad(set_to_none=True)
             if HAVE_TORCH_AMP:
-                # Use autocast only on CUDA. For MPS/CPU use full precision.
-                if device.type == "cuda":
-                    ctx = _autocast(device_type="cuda", dtype=torch.float16, enabled=True)
-                else:
-                    ctx = nullcontext()
+                ctx = _autocast(device_type=device.type, dtype=(torch.float16 if device.type == "cuda" else torch.bfloat16), enabled=(device.type == "cuda"))
             else:
                 # Older API only supports CUDA autocast
-                ctx = _autocast(enabled=True) if device.type == "cuda" else nullcontext()
+                ctx = _autocast(enabled=(device.type == "cuda")) if device.type == "cuda" else nullcontext()
             with ctx:
                 yhat = model(inputs)
                 loss = criterion(yhat, targets)
@@ -90,28 +86,30 @@ def train_model(train_dl, model, epochs: int = 10):
         print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f}")
 
 
-def run_training(device_pref: str = "auto", epochs: int = 10, compile: bool = False):
-    """
-    Notebook-friendly entrypoint to train the MNIST CNN.
-    Returns (model, save_path).
-    """
-    # Select device for this run (local variable)
-    torch_device = select_device(device_pref)
-    print(f"Using device: {torch_device}")
+def main():
+    parser = argparse.ArgumentParser(description="Train MNIST CNN")
+    parser.add_argument("--device", type=str, default=os.environ.get("DEVICE", "auto"), choices=["auto", "cuda", "mps", "cpu"], help="Compute device to use")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
+    parser.add_argument("--compile", action="store_true", help="Enable torch.compile (PyTorch 2.x, CUDA/CPU)")
+    args = parser.parse_args()
 
+    # re-select device in case flag provided
+    global device
+    device = select_device(args.device)
+    print(f"Using device: {device}")
     # prepare the data
     data_dir = os.path.expanduser('~/.torch/datasets/mnist')
     train_dl, test_dl = prepare_data(data_dir)
     print(len(train_dl.dataset), len(test_dl.dataset))
 
     # define the network
-    model = CNN(1).to(torch_device)
+    model = CNN(1).to(device)
     # Use channels_last for better memory access on CUDA
-    if torch_device.type == "cuda":
+    if device.type == "cuda":
         model = model.to(memory_format=torch.channels_last)
 
     # Optional compile for speed (PyTorch 2.x)
-    if compile and hasattr(torch, "compile"):
+    if args.compile and hasattr(torch, "compile"):
         try:
             model = torch.compile(model, mode="max-autotune")  # type: ignore[attr-defined]
             print("Model compiled with torch.compile")
@@ -119,7 +117,7 @@ def run_training(device_pref: str = "auto", epochs: int = 10, compile: bool = Fa
             print(f"torch.compile unavailable or failed: {e}")
 
     # Tune threading for CPU
-    if torch_device.type == "cpu":
+    if device.type == "cpu":
         try:
             threads = max(1, min(8, (os.cpu_count() or 1)))
             torch.set_num_threads(threads)
@@ -130,14 +128,7 @@ def run_training(device_pref: str = "auto", epochs: int = 10, compile: bool = Fa
             pass
 
     # train the model
-    # temporarily swap the module-level device for this call
-    global device
-    prev_device = device
-    device = torch_device
-    try:
-        train_model(train_dl, model, epochs=epochs)
-    finally:
-        device = prev_device
+    train_model(train_dl, model, epochs=args.epochs)
 
     # Save model state dict
     save_dir = os.path.join(os.getcwd(), 'artifacts')
@@ -147,19 +138,6 @@ def run_training(device_pref: str = "auto", epochs: int = 10, compile: bool = Fa
         'model_state_dict': model.state_dict(),
     }, save_path)
     print(f"Model saved to {save_path}")
-
-    return model, save_path
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Train MNIST CNN")
-    parser.add_argument("--device", type=str, default=os.environ.get("DEVICE", "auto"), choices=["auto", "cuda", "mps", "cpu"], help="Compute device to use")
-    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
-    parser.add_argument("--compile", action="store_true", help="Enable torch.compile (PyTorch 2.x, CUDA/CPU)")
-    # Use parse_known_args to ignore extraneous args injected by Jupyter/IPython (e.g., -f ...)
-    args = parser.parse_known_args()[0]
-
-    run_training(device_pref=args.device, epochs=args.epochs, compile=args.compile)
 
     ##########
 

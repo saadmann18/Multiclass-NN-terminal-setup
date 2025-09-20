@@ -15,18 +15,10 @@ from data import prepare_data
 from model import CNN
 try:
     import matplotlib
-    try:
-        from IPython import get_ipython  # type: ignore
-        IN_IPY = get_ipython() is not None
-    except Exception:
-        IN_IPY = False
-    # Use a non-interactive backend only outside notebooks/interactive sessions
-    if not IN_IPY:
-        matplotlib.use('Agg')  # non-interactive backend for saving figures
+    matplotlib.use('Agg')  # non-interactive backend for saving figures
     import matplotlib.pyplot as plt
 except Exception as e:
     plt = None
-    IN_IPY = False
 
 def select_device(preference: str = "auto") -> torch.device:
     pref = (preference or "auto").lower()
@@ -64,14 +56,9 @@ def evaluate_model(test_dl, model, device: torch.device):
         targets = targets.to(device, non_blocking=True)
 
         if HAVE_TORCH_AMP:
-            # Use autocast only on CUDA. For MPS/CPU use full precision.
-            if device.type == "cuda":
-                ctx = _autocast(device_type="cuda", dtype=torch.float16, enabled=True)
-            else:
-                ctx = nullcontext()
+            ctx = _autocast(device_type=device.type, dtype=(torch.float16 if device.type == "cuda" else torch.bfloat16), enabled=(device.type == "cuda"))
         else:
-            # Older API only supports CUDA autocast
-            ctx = _autocast(enabled=True) if device.type == "cuda" else nullcontext()
+            ctx = _autocast(enabled=(device.type == "cuda")) if device.type == "cuda" else nullcontext()
         with ctx:
             logits = model(inputs)
             loss = criterion(logits, targets)
@@ -109,7 +96,7 @@ def evaluate_model(test_dl, model, device: torch.device):
     return accuracy, avg_loss, conf_mat, per_class_acc
 
 
-def run_evaluation(device: str = "auto", ckpt_path: str | None = None, show: bool = True):
+def run_evaluation(device: str = "auto", ckpt_path: str | None = None):
     """
     Notebook-friendly entrypoint to evaluate the MNIST CNN.
     Returns (accuracy, avg_loss, conf_mat, per_class_acc, fig_path or None).
@@ -184,28 +171,6 @@ def run_evaluation(device: str = "auto", ckpt_path: str | None = None, show: boo
             fig.tight_layout()
             fig.savefig(fig_path, dpi=150)
             plt.close(fig)
-            # Optionally display the plot in interactive environments
-            if show and IN_IPY:
-                # Recreate a quick display figure
-                fig2, ax2 = plt.subplots(figsize=(6, 5))
-                im2 = ax2.imshow(cm_norm, interpolation='nearest', cmap='Blues', vmin=0.0, vmax=1.0)
-                plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
-                ax2.set_title('Confusion Matrix (row-normalized)')
-                ax2.set_xlabel('Predicted label')
-                ax2.set_ylabel('True label')
-                ax2.set_xticks(ticks)
-                ax2.set_yticks(ticks)
-                ax2.set_xticklabels(ticks)
-                ax2.set_yticklabels(ticks)
-                plt.setp(ax2.get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
-                for i in range(num_classes):
-                    for j in range(num_classes):
-                        count = cm[i, j]
-                        pct = cm_norm[i, j] * 100.0
-                        text_color = 'white' if cm_norm[i, j] > 0.5 else 'black'
-                        ax2.text(j, i, f"{count}\n{pct:.1f}%", ha='center', va='center', color=text_color, fontsize=8)
-                fig2.tight_layout()
-                plt.show()
 
     return acc, avg_loss, conf_mat, per_class_acc, fig_path
 
@@ -213,11 +178,10 @@ def run_evaluation(device: str = "auto", ckpt_path: str | None = None, show: boo
 def main():
     parser = argparse.ArgumentParser(description="Evaluate MNIST CNN")
     parser.add_argument("--device", type=str, default=os.environ.get("DEVICE", "auto"), choices=["auto", "cuda", "mps", "cpu"], help="Compute device to use")
-    parser.add_argument("--show", action="store_true", help="Display confusion matrix plot if running interactively")
     # Use parse_known_args to ignore extraneous args injected by Jupyter/IPython (e.g., -f ...)
     args = parser.parse_known_args()[0]
 
-    acc, avg_loss, conf_mat, per_class_acc, fig_path = run_evaluation(device=args.device, show=args.show)
+    acc, avg_loss, conf_mat, per_class_acc, fig_path = run_evaluation(device=args.device)
 
     print(f"Test accuracy: {acc*100:.2f}%, avg loss: {avg_loss:.4f}")
     if per_class_acc is not None:
