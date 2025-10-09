@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  # GPU-enabled development service
+  dev-gpu:
+    build:
+      context: .
+      target: development
+      dockerfile: Dockerfile.gpu
+    image: mnist-cnn:dev-gpu
+    environment:
+      - DEVICE=${DEVICE:-cuda}
+      - EPOCHS=${EPOCHS:-10}
+      - MPLBACKEND=Agg
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./logs:/app/logs
+      - ./experiments:/app/experiments
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["python", "-m", "mnist_cnn.cli", "train", "--epochs", "${EPOCHS:-10}", "--device", "${DEVICE:-cuda}"]
+
+  # GPU training service
+  train-gpu:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile.gpu
+    image: mnist-cnn:prod-gpu
+    environment:
+      - DEVICE=${DEVICE:-cuda}
+      - EPOCHS=${EPOCHS:-10}
+      - MPLBACKEND=Agg
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./logs:/app/logs
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["mnist-train", "--epochs", "${EPOCHS:-10}", "--device", "${DEVICE:-cuda}", "--compile"]
+
+  # GPU evaluation service
+  eval-gpu:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile.gpu
+    image: mnist-cnn:prod-gpu
+    environment:
+      - DEVICE=${DEVICE:-cuda}
+      - MPLBACKEND=Agg
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./logs:/app/logs
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["mnist-eval", "--device", "${DEVICE:-cuda}"]
+
+  # GPU pipeline service
+  pipeline-gpu:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile.gpu
+    image: mnist-cnn:prod-gpu
+    environment:
+      - DEVICE=${DEVICE:-cuda}
+      - EPOCHS=${EPOCHS:-10}
+      - MPLBACKEND=Agg
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./logs:/app/logs
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    entrypoint: ["sh", "-c"]
+    command: |
+      "mnist-train --epochs ${EPOCHS:-10} --device ${DEVICE:-cuda} --compile && 
+       mnist-eval --device ${DEVICE:-cuda}"

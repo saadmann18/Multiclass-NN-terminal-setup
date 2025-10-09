@@ -1,0 +1,36 @@
+# Default configuration for MNIST CNN training and evaluation
+
+# Model configuration
+model:
+  n_channels: 1
+  compile: false  # Enable torch.compile for PyTorch 2.0+
+
+# Training configuration
+training:
+  epochs: 10
+  learning_rate: 0.01
+  momentum: 0.9
+  batch_size_train: 128
+  device: "auto"  # Options: auto, cuda, mps, cpu
+
+# Data configuration
+data:
+  data_dir: "~/.torch/datasets/mnist"
+  batch_size_test: 1024
+  num_workers: null  # null for auto-detection
+
+# Evaluation configuration
+evaluation:
+  show_plot: true
+  save_confusion_matrix: true
+
+# Paths
+paths:
+  artifacts_dir: "artifacts"
+  model_filename: "model_mnist_cnn.pth"
+  confusion_matrix_filename: "confusion_matrix.png"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

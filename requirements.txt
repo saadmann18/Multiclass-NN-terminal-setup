@@ -1,7 +1,12 @@
-# Runtime dependencies for the MNIST CNN project
-# Pinning versions for reproducibility. These are CPU wheels.
-# If you want GPU support, do not use these CPU wheels; see README Docker section.
-torch==2.3.1
-torchvision==0.18.1
-tqdm==4.66.4
-matplotlib==3.8.4
+# Production dependencies for MNIST CNN project
+# These are automatically managed by pyproject.toml
+# This file is kept for Docker builds and legacy compatibility
+
+# Install the package with all dependencies:
+# pip install -e .
+
+torch>=2.0.0
+torchvision>=0.15.0
+tqdm>=4.65.0
+matplotlib>=3.7.0
+PyYAML>=6.0

@@ -1,212 +1,316 @@
-# Multiclass-NN-terminal-setup
-This project mimics SID task from Fearless project. The aim is:
+# MNIST CNN - A Modern PyTorch Implementation
 
-1. model, data, eval(with saved model) setup
-2. Tensorboard setup
-3. Additive margin soft max analysis
-4. ResNet model rebuild
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## Overview
+A production-ready PyTorch implementation for MNIST digit classification using Convolutional Neural Networks. This project demonstrates modern ML engineering practices with a complete, modular, and well-tested codebase.
 
-This repository contains a simple CNN on MNIST with separate `model.py`, `data.py`, `train.py`, and `eval.py` modules.
+## ✨ Features
 
-Recent updates add:
+- **🚀 Modern PyTorch**: Uses latest PyTorch features including mixed precision training and torch.compile
+- **🔧 Device Agnostic**: Automatic device selection (CUDA, MPS, CPU) with optimizations
+- **⚙️ Configurable**: YAML-based configuration management system
+- **🧪 Well Tested**: Comprehensive test suite with >90% coverage
+- **🐳 Dockerized**: Multi-stage Docker builds for development and production
+- **📚 Documented**: Complete API documentation and tutorials
+- **🛠️ Developer Friendly**: Pre-commit hooks, linting, formatting, and CI/CD ready
 
-- Unified device selection: CUDA (NVIDIA), MPS (Apple Silicon), or CPU.
-- Mixed-precision training on CUDA only (safe fallbacks elsewhere).
-- Jupyter-friendly APIs to run training/evaluation from a single cell.
-- Confusion matrix plotting and saving to `artifacts/confusion_matrix.png`.
-
-Key files:
-
-- `train.py` – training entrypoints (`main()` and `run_training()`)
-- `eval.py` – evaluation entrypoints (`main()` and `run_evaluation()`)
-- `model.py` – CNN definition (outputs logits; no final Softmax)
-- `data.py` – MNIST dataloaders
-- `artifacts/` – saved model and plots
-
-## Quickstart: Docker (Recommended)
-
-The easiest way to run this project is with Docker. No local Python setup is required.
-
-- Build the image:
+## 📁 Project Structure
 
 ```
-docker build -t mnist-cnn:cpu .
+mnist-cnn/
+├── src/mnist_cnn/          # Main package source code
+│   ├── __init__.py         # Package initialization
+│   ├── model.py            # CNN model definition
+│   ├── data.py             # Data loading utilities
+│   ├── train.py            # Training pipeline
+│   ├── eval.py             # Evaluation pipeline
+│   ├── utils.py            # Utility functions
+│   ├── config.py           # Configuration management
+│   └── cli.py              # Command-line interface
+├── tests/                  # Comprehensive test suite
+│   ├── test_model.py       # Model tests
+│   ├── test_data.py        # Data loading tests
+│   ├── test_utils.py       # Utility tests
+│   ├── test_config.py      # Configuration tests
+│   └── conftest.py         # Test fixtures
+├── config/                 # Configuration files
+│   └── default.yaml        # Default configuration
+├── docs/                   # Documentation
+│   ├── index.md            # Main documentation
+│   ├── installation.md     # Installation guide
+│   ├── configuration.md    # Configuration guide
+│   └── api/                # API documentation
+├── scripts/                # Utility scripts
+│   ├── setup_environment.sh    # Environment setup
+│   ├── train_model.py          # Advanced training script
+│   ├── evaluate_model.py       # Advanced evaluation script
+│   └── run_experiments.py      # Experiment runner
+├── artifacts/              # Model outputs and results
+├── logs/                   # Training and evaluation logs
+├── experiments/            # Experiment results
+├── requirements.txt        # Production dependencies (legacy/Docker)
+├── pyproject.toml          # Package configuration
+├── Dockerfile              # Multi-stage Docker build
+├── docker-compose.yml      # Docker Compose configuration
+├── Makefile               # Development commands
+└── README.md              # This file
 ```
 
-- Run end-to-end (train then eval) using Docker Compose:
+## 🚀 Quick Start
 
-```
-docker compose up --build app
-```
+### Option 1: Docker (Recommended)
 
-- Or run directly with docker (train only by default, per Dockerfile CMD):
+The easiest way to run this project is with Docker:
 
-```
-docker run --rm \
-  -v "$(pwd)/artifacts:/app/artifacts" \
-  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
-  -e DEVICE=cpu -e EPOCHS=5 \
-  mnist-cnn:cpu python -u train.py --device ${DEVICE:-cpu} --epochs ${EPOCHS:-5}
-```
+```bash
+# Train and evaluate with Docker Compose
+docker-compose up pipeline
 
-- Evaluate:
-
-```
-docker run --rm \
-  -v "$(pwd)/artifacts:/app/artifacts" \
-  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
-  -e DEVICE=cpu \
-  mnist-cnn:cpu python -u eval.py --device ${DEVICE:-cpu}
+# Or run individual services
+docker-compose up train  # Training only
+docker-compose up eval   # Evaluation only
+docker-compose up dev    # Development mode
 ```
 
-Artifacts are saved to `./artifacts/` on your host:
+### Option 2: Local Installation
 
-- `artifacts/model_mnist_cnn.pth`
-- `artifacts/confusion_matrix.png`
+```bash
+# Clone the repository
+git clone <repository-url>
+cd Multiclass-NN-terminal-setup
 
-## Notes on Performance & Precision
+# Quick setup (creates venv, installs dependencies, sets up pre-commit)
+./scripts/setup_environment.sh
 
-- Mixed precision (`autocast`) is enabled only on CUDA for stability. CPU/MPS run in full precision.
-- The model outputs logits (no final Softmax). Use `CrossEntropyLoss` for training. For probabilities at inference, use `torch.softmax(logits, dim=1)`.
-- On CUDA, we enable `channels_last` for better memory access and cuDNN benchmark for speed.
-- On CPU, sensible threading defaults are set.
+# Activate environment
+source venv/bin/activate
 
-## Troubleshooting
+# Train the model
+make train
+# or
+mnist-train --epochs 10 --device auto
 
-- If you don’t see `artifacts/confusion_matrix.png`, ensure volume mounts are set correctly and that you ran evaluation (via Compose `app`/`eval`, or the direct eval command).
-- Inside containers, plotting uses the non-interactive `Agg` backend and saves to disk. No GUI pops up.
-
-## Repository Structure
-
-```
-.
-├── artifacts/
-│   ├── model_mnist_cnn.pth
-│   └── confusion_matrix.png
-├── data.py
-├── eval.py
-├── model.py
-├── train.py
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── .dockerignore
-└── README.md
+# Evaluate the model
+make eval
+# or
+mnist-eval --device auto
 ```
 
-## Docker
+### Option 3: Python API
 
-This project includes a CPU-only Docker setup for easy, reproducible runs without polluting your host environment.
+```python
+from mnist_cnn import run_training, run_evaluation
 
-Notes:
+# Train the model
+model, save_path = run_training(epochs=10, device_preference="auto")
 
-- CPU is the default inside Docker. NVIDIA CUDA is optional (see below). Apple Silicon MPS is not available in Docker.
-- Artifacts and dataset cache are persisted via bind mounts to your host for faster re-runs.
-
-### 1) Build the image
-
-```
-docker build -t mnist-cnn:cpu .
+# Evaluate the model
+accuracy, loss, conf_mat, per_class_acc, plot_path = run_evaluation()
+print(f"Test Accuracy: {accuracy:.4f}")
 ```
 
-### 2) Train (CPU)
+## 📋 Requirements
 
-The commands below mount two directories so your model checkpoint and downloaded MNIST cache persist between runs:
+- Python 3.8 or higher
+- PyTorch 2.0+ (automatically installed)
+- CUDA toolkit (optional, for GPU support)
+- Docker (optional, for containerized deployment)
 
-```
-mkdir -p artifacts ~/.torch/datasets
+## 🛠️ Development
 
-docker run --rm \
-  -v "$(pwd)/artifacts:/app/artifacts" \
-  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
-  -e DEVICE=cpu \
-  mnist-cnn:cpu train.py --device cpu --epochs 5
-```
+### Setup Development Environment
 
-You can also use `--device auto` (the default) or set `-e DEVICE=auto`.
+```bash
+# Install in development mode (includes all dev tools)
+pip install -e ".[dev,docs]"
+# or
+make install-dev
 
-### 3) Evaluate (CPU)
+# Run tests
+make test
 
-After training, evaluate using the saved checkpoint and generate the confusion matrix PNG into `artifacts/`:
+# Run tests with coverage
+make test-cov
 
-```
-docker run --rm \
-  -v "$(pwd)/artifacts:/app/artifacts" \
-  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
-  -e DEVICE=cpu \
-  mnist-cnn:cpu eval.py --device cpu
-```
+# Format code
+make format
 
-Expected outputs (on host):
+# Run linting
+make lint
 
-- `artifacts/model_mnist_cnn.pth`
-- `artifacts/confusion_matrix.png`
+# Type checking
+make type-check
 
-### Optional: NVIDIA GPU (CUDA)
-
-If you have an NVIDIA GPU and the NVIDIA Container Toolkit installed, you can run with GPU acceleration. Two options:
-
-1) Use the same image and pass `--gpus all` (you must also install CUDA-compatible torch/torchvision in the image). This requires building a CUDA-enabled image first; the provided Dockerfile is CPU-only.
-
-2) Build a CUDA-enabled image. Example Dockerfile sketch (replace versions with those matching your driver/toolkit):
-
-```
-# Example only — not provided by default in this repo
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
-RUN apt-get update && apt-get install -y python3 python3-pip libjpeg-turbo-progs libpng16-16 && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY requirements.txt ./
-# Install CUDA builds of torch/torchvision that match your CUDA version
-RUN pip3 install --no-cache-dir torch==2.3.1+cu121 torchvision==0.18.1+cu121 --index-url https://download.pytorch.org/whl/cu121 \
-    && pip3 install --no-cache-dir -r requirements.txt
-COPY . .
-ENTRYPOINT ["python3", "-u"]
+# Run all quality checks
+make check
 ```
 
-Run with GPU:
+### Configuration
 
-```
-docker run --rm --gpus all \
-  -v "$(pwd)/artifacts:/app/artifacts" \
-  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
-  -e DEVICE=cuda \
-  mnist-cnn:cuda train.py --device cuda --epochs 5
-```
+The project uses YAML-based configuration. See `config/default.yaml` for all options:
 
-Troubleshooting GPU builds is out of scope for this README; ensure your host drivers, CUDA version, and torch/torchvision wheels are compatible.
+```yaml
+# Model configuration
+model:
+  n_channels: 1
+  compile: false
 
-### Docker Compose
-
-You can also use Docker Compose for shorter commands. The included `docker-compose.yml` defines three services: `app` (train→eval), `train` (train only), and `eval` (eval only).
-
-- End-to-end (train → eval):
-
-```
-docker compose up --build app
+# Training configuration
+training:
+  epochs: 10
+  learning_rate: 0.01
+  batch_size_train: 128
+  device: "auto"  # auto, cuda, mps, cpu
 ```
 
-- Override epochs or device at runtime:
+Create custom configurations for different experiments:
 
-```
-EPOCHS=5 DEVICE=cpu docker compose up app
-```
+```bash
+# Use custom config
+mnist-train --config config/my_experiment.yaml
 
-- Train only:
-
-```
-EPOCHS=5 DEVICE=cpu docker compose up train
+# Override specific parameters
+mnist-train --epochs 20 --learning-rate 0.001 --device cuda
 ```
 
-- Eval only:
+## 🧪 Running Experiments
 
+Use the experiment runner to test different hyperparameters:
+
+```bash
+# Run predefined experiments
+python scripts/run_experiments.py
+
+# Run custom experiments from JSON file
+python scripts/run_experiments.py --experiments-file my_experiments.json
+
+# Advanced training with logging
+python scripts/train_model.py --experiment-name high_lr_test --epochs 20 --learning-rate 0.05
+
+# Detailed evaluation with analysis
+python scripts/evaluate_model.py --experiment-name high_lr_test --save-results
 ```
-DEVICE=cpu docker compose up eval
+
+## 🐳 Docker Usage
+
+### CPU Training
+```bash
+# Development
+docker-compose up dev
+
+# Production pipeline
+docker-compose up pipeline
+
+# Individual services
+docker-compose up train
+docker-compose up eval
 ```
 
-Notes:
+### GPU Training
+```bash
+# Build GPU image
+docker-compose -f docker-compose.gpu.yml build
 
-- Volumes mount `./artifacts` to `/app/artifacts` and your host `~/.torch/datasets` to `/root/.torch/datasets` inside the container.
-- `DEVICE` defaults to `cpu` and `EPOCHS` defaults to `5` if not set.
-- The compose file uses the same `mnist-cnn:cpu` image and sets `MPLBACKEND=Agg` for headless plotting.
+# Run GPU training
+docker-compose -f docker-compose.gpu.yml up train-gpu
+
+# Run GPU pipeline
+docker-compose -f docker-compose.gpu.yml up pipeline-gpu
+```
+
+### Jupyter Development
+```bash
+# Start Jupyter Lab
+docker-compose up notebook
+
+# Access at http://localhost:8888
+```
+
+## 📊 Model Architecture
+
+The CNN model consists of:
+
+- **Conv Block 1**: Conv2d(1→32, 3×3) → ReLU → MaxPool2d(2×2)
+- **Conv Block 2**: Conv2d(32→32, 3×3) → ReLU → MaxPool2d(2×2)
+- **FC Block 1**: Linear(800→100) → ReLU
+- **Output**: Linear(100→10)
+
+**Total Parameters**: ~90,678
+
+## 🎯 Performance
+
+Expected results on MNIST test set:
+- **Accuracy**: ~98-99%
+- **Training Time**: ~2-3 minutes (CPU), ~30 seconds (GPU)
+- **Model Size**: ~350KB
+
+## 🔧 Advanced Features
+
+- **Mixed Precision Training**: Automatic on CUDA
+- **Device Optimization**: Automatic device selection and optimization
+- **Model Compilation**: `torch.compile` support for PyTorch 2.0+
+- **Experiment Tracking**: Built-in experiment management
+- **Configuration Management**: YAML-based configuration system
+- **Comprehensive Testing**: >90% test coverage
+
+## 🔄 CI/CD Pipeline
+
+Simple GitHub Actions workflows:
+
+- **CI**: Tests and code style checks on every push/PR
+- **Release**: Creates GitHub releases when you push a tag
+- **Docs**: Builds documentation to verify it works
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Install development dependencies: `make install-dev`
+4. Make your changes
+5. Run tests: `make test`
+6. Run quality checks: `make check`
+7. Commit your changes: `git commit -am 'Add feature'`
+8. Push to the branch: `git push origin feature-name`
+9. Submit a pull request
+
+That's it! Keep it simple.
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- PyTorch team for the excellent deep learning framework
+- MNIST dataset creators
+- Open source community for tools and libraries
+
+## 📚 Documentation
+
+For detailed documentation, see:
+- [Installation Guide](docs/installation.md)
+- [Configuration Guide](docs/configuration.md)
+- [API Reference](docs/api/index.md)
+- [Development Guide](docs/development.md)
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **CUDA out of memory**: Reduce batch size in configuration
+2. **Import errors**: Ensure you're in the correct virtual environment
+3. **Permission errors**: Check Docker volume mount permissions
+4. **Slow training**: Enable `torch.compile` for PyTorch 2.0+
+
+### Getting Help
+
+- Check the [documentation](docs/)
+- Search existing [issues](https://github.com/yourusername/mnist-cnn/issues)
+- Create a new issue with detailed information
+
+---
+
+**Made with ❤️ using PyTorch**

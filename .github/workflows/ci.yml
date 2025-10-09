@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ apple-silicon-chip ]
+  pull_request:
+    branches: [ apple-silicon-chip ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run tests
+      run: |
+        pytest tests/ -v
+
+    - name: Check code style
+      run: |
+        black --check src/ tests/
+        flake8 src/ tests/

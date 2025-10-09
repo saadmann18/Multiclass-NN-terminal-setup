@@ -1,41 +1,98 @@
 version: "3.9"
 
 services:
-  # Default app: uses image ENTRYPOINT (/app/run_all.sh) to train then evaluate
-  app:
-    build: .
-    image: mnist-cnn:cpu
+  # Development service with full project mounted
+  dev:
+    build:
+      context: .
+      target: development
+    image: mnist-cnn:dev
     environment:
       - DEVICE=${DEVICE:-cpu}
-      - EPOCHS=${EPOCHS:-5}
+      - EPOCHS=${EPOCHS:-10}
       - MPLBACKEND=Agg
     volumes:
       - ./artifacts:/app/artifacts
-      - ${HOME}/.torch/datasets:/root/.torch/datasets
-    entrypoint: ["sh", "-c"]
-    command: ["python -u train.py --device ${DEVICE:-cpu} --epochs ${EPOCHS:-5} && python -u eval.py --device ${DEVICE:-cpu}"]
+      - ./logs:/app/logs
+      - ./experiments:/app/experiments
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    working_dir: /app
+    command: ["python", "-m", "mnist_cnn.cli", "train", "--epochs", "${EPOCHS:-10}", "--device", "${DEVICE:-cpu}"]
 
-  # Train-only: override entrypoint to run python directly
+  # Production training service
   train:
-    image: mnist-cnn:cpu
+    build:
+      context: .
+      target: production
+    image: mnist-cnn:prod
     environment:
       - DEVICE=${DEVICE:-cpu}
-      - EPOCHS=${EPOCHS:-5}
+      - EPOCHS=${EPOCHS:-10}
       - MPLBACKEND=Agg
     volumes:
       - ./artifacts:/app/artifacts
-      - ${HOME}/.torch/datasets:/root/.torch/datasets
-    entrypoint: ["python", "-u"]
-    command: ["train.py", "--device", "${DEVICE:-cpu}", "--epochs", "${EPOCHS:-5}"]
+      - ./logs:/app/logs
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    command: ["mnist-train", "--epochs", "${EPOCHS:-10}", "--device", "${DEVICE:-cpu}"]
 
-  # Eval-only: override entrypoint to run python directly
+  # Production evaluation service
   eval:
-    image: mnist-cnn:cpu
+    build:
+      context: .
+      target: production
+    image: mnist-cnn:prod
     environment:
       - DEVICE=${DEVICE:-cpu}
       - MPLBACKEND=Agg
     volumes:
       - ./artifacts:/app/artifacts
-      - ${HOME}/.torch/datasets:/root/.torch/datasets
-    entrypoint: ["python", "-u"]
-    command: ["eval.py", "--device", "${DEVICE:-cpu}"]
+      - ./logs:/app/logs
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    command: ["mnist-eval", "--device", "${DEVICE:-cpu}"]
+
+  # Complete pipeline: train then evaluate
+  pipeline:
+    build:
+      context: .
+      target: production
+    image: mnist-cnn:prod
+    environment:
+      - DEVICE=${DEVICE:-cpu}
+      - EPOCHS=${EPOCHS:-10}
+      - MPLBACKEND=Agg
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./logs:/app/logs
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    entrypoint: ["sh", "-c"]
+    command: |
+      "mnist-train --epochs ${EPOCHS:-10} --device ${DEVICE:-cpu} && 
+       mnist-eval --device ${DEVICE:-cpu}"
+
+  # Jupyter notebook service for development
+  notebook:
+    build:
+      context: .
+      target: development
+    image: mnist-cnn:dev
+    environment:
+      - DEVICE=${DEVICE:-cpu}
+      - MPLBACKEND=inline
+    volumes:
+      - ./:/app
+      - ${HOME}/.torch/datasets:/app/.torch/datasets
+    ports:
+      - "8888:8888"
+    command: |
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser 
+      --allow-root --NotebookApp.token='' --NotebookApp.password=''
+
+  # Testing service
+  test:
+    build:
+      context: .
+      target: development
+    image: mnist-cnn:dev
+    volumes:
+      - ./:/app
+    command: ["pytest", "tests/", "-v", "--cov=src/mnist_cnn"]
