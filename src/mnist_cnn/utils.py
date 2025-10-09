@@ -9,25 +9,26 @@ import torch
 def select_device(preference: str = "auto") -> torch.device:
     """
     Select the best available device for computation.
-    
+
     Args:
         preference (str): Device preference - "auto", "cuda", "mps", or "cpu"
-        
+
     Returns:
         torch.device: Selected device
     """
     pref = (preference or "auto").lower()
-    
+
     if pref == "cuda":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     elif pref == "mps":
         return torch.device(
-            "mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() 
+            "mps"
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
             else "cpu"
         )
     elif pref == "cpu":
         return torch.device("cpu")
-    
+
     # Auto selection
     if torch.cuda.is_available():
         return torch.device("cuda")
@@ -40,18 +41,18 @@ def select_device(preference: str = "auto") -> torch.device:
 def setup_device_optimizations(device: torch.device) -> None:
     """
     Setup device-specific optimizations.
-    
+
     Args:
         device (torch.device): Target device
     """
     if device.type == "cuda":
         # Enable cuDNN benchmark for consistent input sizes
         torch.backends.cudnn.benchmark = True
-        
+
         # Set high precision matrix multiplication (PyTorch 2.0+)
         if hasattr(torch, "set_float32_matmul_precision"):
             torch.set_float32_matmul_precision("high")
-            
+
     elif device.type == "cpu":
         # Optimize CPU threading
         try:

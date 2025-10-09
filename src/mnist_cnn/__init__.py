@@ -14,10 +14,4 @@ from .data import prepare_data
 from .train import train_model, run_training
 from .eval import evaluate_model
 
-__all__ = [
-    "CNN",
-    "prepare_data", 
-    "train_model",
-    "run_training",
-    "evaluate_model"
-]
+__all__ = ["CNN", "prepare_data", "train_model", "run_training", "evaluate_model"]

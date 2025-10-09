@@ -20,29 +20,17 @@ def temp_dir():
 def sample_config():
     """Sample configuration for testing."""
     return {
-        'model': {
-            'n_channels': 1,
-            'compile': False
+        "model": {"n_channels": 1, "compile": False},
+        "training": {
+            "epochs": 5,
+            "learning_rate": 0.01,
+            "momentum": 0.9,
+            "batch_size_train": 64,
+            "device": "cpu",
         },
-        'training': {
-            'epochs': 5,
-            'learning_rate': 0.01,
-            'momentum': 0.9,
-            'batch_size_train': 64,
-            'device': 'cpu'
-        },
-        'data': {
-            'data_dir': '~/.torch/datasets/mnist',
-            'batch_size_test': 256
-        },
-        'evaluation': {
-            'show_plot': False,
-            'save_confusion_matrix': True
-        },
-        'paths': {
-            'artifacts_dir': 'artifacts',
-            'model_filename': 'test_model.pth'
-        }
+        "data": {"data_dir": "~/.torch/datasets/mnist", "batch_size_test": 256},
+        "evaluation": {"show_plot": False, "save_confusion_matrix": True},
+        "paths": {"artifacts_dir": "artifacts", "model_filename": "test_model.pth"},
     }
 
 
@@ -50,6 +38,7 @@ def sample_config():
 def dummy_model():
     """Create a dummy CNN model for testing."""
     from src.mnist_cnn.model import CNN
+
     return CNN(n_channels=1)
 
 
@@ -85,6 +74,7 @@ def set_random_seed():
 @pytest.fixture
 def mock_mnist_dataset():
     """Mock MNIST dataset for testing without downloading."""
+
     class MockMNIST:
         def __init__(self, root, train=True, download=True, transform=None):
             self.train = train
@@ -96,27 +86,29 @@ def mock_mnist_dataset():
             else:
                 self.data = torch.randint(0, 255, (200, 28, 28), dtype=torch.uint8)
                 self.targets = torch.randint(0, 10, (200,))
-        
+
         def __len__(self):
             return len(self.data)
-        
+
         def __getitem__(self, idx):
-            image = self.data[idx].float() / 255.0  # Convert to float and normalize to [0,1]
+            image = (
+                self.data[idx].float() / 255.0
+            )  # Convert to float and normalize to [0,1]
             target = self.targets[idx]
-            
+
             if self.transform:
-                image = self.transform(image.unsqueeze(0)).squeeze(0)  # Add channel dim for transform
-            
+                image = self.transform(image.unsqueeze(0)).squeeze(
+                    0
+                )  # Add channel dim for transform
+
             return image, target
-    
+
     return MockMNIST
 
 
 # Skip tests that require CUDA if not available
 def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "cuda: mark test as requiring CUDA"
-    )
+    config.addinivalue_line("markers", "cuda: mark test as requiring CUDA")
 
 
 def pytest_collection_modifyitems(config, items):
