@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  # Default app: uses image ENTRYPOINT (/app/run_all.sh) to train then evaluate
+  app:
+    build: .
+    image: mnist-cnn:cpu
+    environment:
+      - DEVICE=${DEVICE:-cpu}
+      - EPOCHS=${EPOCHS:-5}
+      - MPLBACKEND=Agg
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ${HOME}/.torch/datasets:/root/.torch/datasets
+    entrypoint: ["sh", "-c"]
+    command: ["python -u train.py --device ${DEVICE:-cpu} --epochs ${EPOCHS:-5} && python -u eval.py --device ${DEVICE:-cpu}"]
+
+  # Train-only: override entrypoint to run python directly
+  train:
+    image: mnist-cnn:cpu
+    environment:
+      - DEVICE=${DEVICE:-cpu}
+      - EPOCHS=${EPOCHS:-5}
+      - MPLBACKEND=Agg
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ${HOME}/.torch/datasets:/root/.torch/datasets
+    entrypoint: ["python", "-u"]
+    command: ["train.py", "--device", "${DEVICE:-cpu}", "--epochs", "${EPOCHS:-5}"]
+
+  # Eval-only: override entrypoint to run python directly
+  eval:
+    image: mnist-cnn:cpu
+    environment:
+      - DEVICE=${DEVICE:-cpu}
+      - MPLBACKEND=Agg
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ${HOME}/.torch/datasets:/root/.torch/datasets
+    entrypoint: ["python", "-u"]
+    command: ["eval.py", "--device", "${DEVICE:-cpu}"]

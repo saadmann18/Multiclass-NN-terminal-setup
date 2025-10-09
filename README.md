@@ -25,129 +25,46 @@ Key files:
 - `data.py` – MNIST dataloaders
 - `artifacts/` – saved model and plots
 
-## Environment Setup
+## Quickstart: Docker (Recommended)
 
-You can use Conda environments for a clean setup. Choose one option:
+The easiest way to run this project is with Docker. No local Python setup is required.
 
-### Apple Silicon (MPS)
-
-```
-conda create -n mnist-cnn python=3.10 -y
-conda activate mnist-cnn
-conda install -y pytorch torchvision -c pytorch -c conda-forge
-```
-
-### NVIDIA CUDA (example: CUDA 12.1)
+- Build the image:
 
 ```
-conda create -n mnist-cnn python=3.10 -y
-conda activate mnist-cnn
-conda install -y pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia -c conda-forge
+docker build -t mnist-cnn:cpu .
 ```
 
-### CPU-only
+- Run end-to-end (train then eval) using Docker Compose:
 
 ```
-conda create -n mnist-cnn python=3.10 -y
-conda activate mnist-cnn
-conda install -y pytorch torchvision cpuonly -c pytorch -c conda-forge
+docker compose up --build app
 ```
 
-Optional (for plotting in notebooks/CLI):
+- Or run directly with docker (train only by default, per Dockerfile CMD):
 
 ```
-conda install -y matplotlib -c conda-forge
+docker run --rm \
+  -v "$(pwd)/artifacts:/app/artifacts" \
+  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
+  -e DEVICE=cpu -e EPOCHS=5 \
+  mnist-cnn:cpu python -u train.py --device ${DEVICE:-cpu} --epochs ${EPOCHS:-5}
 ```
 
-## Running from the Command Line
-
-All commands assume the project root: `Multiclass-NN-terminal-setup/`
-
-### Train
+- Evaluate:
 
 ```
-python3 train.py --device auto --epochs 5
+docker run --rm \
+  -v "$(pwd)/artifacts:/app/artifacts" \
+  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
+  -e DEVICE=cpu \
+  mnist-cnn:cpu python -u eval.py --device ${DEVICE:-cpu}
 ```
 
-Choose device explicitly if needed:
-
-- MPS (Apple Silicon): `--device mps`
-- CUDA (NVIDIA): `--device cuda`
-- CPU: `--device cpu`
-
-Optional (PyTorch 2.x on CUDA/CPU):
-
-```
-python3 train.py --device cuda --epochs 5 --compile
-```
-
-### Evaluate
-
-```
-python3 eval.py --device auto
-```
-
-To also display the confusion matrix window (if interactive GUI available):
-
-```
-python3 eval.py --device auto --show
-```
-
-Output artifacts are saved to `artifacts/`:
+Artifacts are saved to `./artifacts/` on your host:
 
 - `artifacts/model_mnist_cnn.pth`
 - `artifacts/confusion_matrix.png`
-
-## Running from Jupyter (Single Cell)
-
-We provide notebook-friendly functions that avoid argparse and work cleanly in Jupyter.
-
-```
-import sys, os
-project_root = "/Users/saud06/dev/Multiclass-NN-terminal-setup"  # adjust if needed
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
-from train import run_training
-from eval import run_evaluation
-
-# Select device: 'auto' | 'mps' | 'cuda' | 'cpu'
-device = 'mps'
-epochs = 5
-
-# 1) Train
-model, ckpt_path = run_training(device_pref=device, epochs=epochs, compile=False)
-
-# 2) Evaluate and display confusion matrix inline
-acc, avg_loss, conf_mat, per_class_acc, fig_path = run_evaluation(device=device, ckpt_path=ckpt_path, show=True)
-print(f"Accuracy: {acc*100:.2f}%  |  Avg loss: {avg_loss:.4f}")
-print("Saved plot:", fig_path)
-```
-
-### Displaying a Saved Plot in Jupyter
-
-If `matplotlib` is installed:
-
-```
-import os
-import matplotlib.pyplot as plt
-
-img_path = os.path.join(project_root, "artifacts", "confusion_matrix.png")
-img = plt.imread(img_path)
-plt.figure(figsize=(6,5))
-plt.imshow(img)
-plt.axis("off")
-plt.title("Confusion Matrix")
-plt.show()
-```
-
-Without installing `matplotlib`, use IPython display:
-
-```
-from IPython.display import Image, display
-img_path = os.path.join(project_root, "artifacts", "confusion_matrix.png")
-display(Image(filename=img_path))
-```
 
 ## Notes on Performance & Precision
 
@@ -158,32 +75,8 @@ display(Image(filename=img_path))
 
 ## Troubleshooting
 
-### OpenMP conflict on macOS (libomp)
-
-If you see:
-
-```
-OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib already initialized.
-```
-
-It means multiple OpenMP runtimes are loaded (e.g., mixing pip and conda packages). Fix by ensuring PyTorch/torchvision come from Conda only and keeping LLVM OpenMP:
-
-```
-pip uninstall -y torch torchvision
-conda remove intel-openmp
-conda install -y -c conda-forge llvm-openmp
-conda install -y pytorch torchvision -c pytorch -c conda-forge
-```
-
-As a temporary workaround to unblock a single run:
-
-```
-KMP_DUPLICATE_LIB_OK=TRUE python3 train.py --device mps --epochs 1
-```
-
-### Jupyter argparse errors (ipykernel `-f`)
-
-If running `main()` directly in a notebook causes an error about `-f ...` arguments, use the notebook APIs `run_training()` / `run_evaluation()` as shown above, or ensure the scripts use `parse_known_args()` (already configured).
+- If you don’t see `artifacts/confusion_matrix.png`, ensure volume mounts are set correctly and that you ran evaluation (via Compose `app`/`eval`, or the direct eval command).
+- Inside containers, plotting uses the non-interactive `Agg` backend and saves to disk. No GUI pops up.
 
 ## Repository Structure
 
@@ -196,6 +89,124 @@ If running `main()` directly in a notebook causes an error about `-f ...` argume
 ├── eval.py
 ├── model.py
 ├── train.py
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── .dockerignore
 └── README.md
 ```
 
+## Docker
+
+This project includes a CPU-only Docker setup for easy, reproducible runs without polluting your host environment.
+
+Notes:
+
+- CPU is the default inside Docker. NVIDIA CUDA is optional (see below). Apple Silicon MPS is not available in Docker.
+- Artifacts and dataset cache are persisted via bind mounts to your host for faster re-runs.
+
+### 1) Build the image
+
+```
+docker build -t mnist-cnn:cpu .
+```
+
+### 2) Train (CPU)
+
+The commands below mount two directories so your model checkpoint and downloaded MNIST cache persist between runs:
+
+```
+mkdir -p artifacts ~/.torch/datasets
+
+docker run --rm \
+  -v "$(pwd)/artifacts:/app/artifacts" \
+  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
+  -e DEVICE=cpu \
+  mnist-cnn:cpu train.py --device cpu --epochs 5
+```
+
+You can also use `--device auto` (the default) or set `-e DEVICE=auto`.
+
+### 3) Evaluate (CPU)
+
+After training, evaluate using the saved checkpoint and generate the confusion matrix PNG into `artifacts/`:
+
+```
+docker run --rm \
+  -v "$(pwd)/artifacts:/app/artifacts" \
+  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
+  -e DEVICE=cpu \
+  mnist-cnn:cpu eval.py --device cpu
+```
+
+Expected outputs (on host):
+
+- `artifacts/model_mnist_cnn.pth`
+- `artifacts/confusion_matrix.png`
+
+### Optional: NVIDIA GPU (CUDA)
+
+If you have an NVIDIA GPU and the NVIDIA Container Toolkit installed, you can run with GPU acceleration. Two options:
+
+1) Use the same image and pass `--gpus all` (you must also install CUDA-compatible torch/torchvision in the image). This requires building a CUDA-enabled image first; the provided Dockerfile is CPU-only.
+
+2) Build a CUDA-enabled image. Example Dockerfile sketch (replace versions with those matching your driver/toolkit):
+
+```
+# Example only — not provided by default in this repo
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+RUN apt-get update && apt-get install -y python3 python3-pip libjpeg-turbo-progs libpng16-16 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements.txt ./
+# Install CUDA builds of torch/torchvision that match your CUDA version
+RUN pip3 install --no-cache-dir torch==2.3.1+cu121 torchvision==0.18.1+cu121 --index-url https://download.pytorch.org/whl/cu121 \
+    && pip3 install --no-cache-dir -r requirements.txt
+COPY . .
+ENTRYPOINT ["python3", "-u"]
+```
+
+Run with GPU:
+
+```
+docker run --rm --gpus all \
+  -v "$(pwd)/artifacts:/app/artifacts" \
+  -v "$HOME/.torch/datasets:/root/.torch/datasets" \
+  -e DEVICE=cuda \
+  mnist-cnn:cuda train.py --device cuda --epochs 5
+```
+
+Troubleshooting GPU builds is out of scope for this README; ensure your host drivers, CUDA version, and torch/torchvision wheels are compatible.
+
+### Docker Compose
+
+You can also use Docker Compose for shorter commands. The included `docker-compose.yml` defines three services: `app` (train→eval), `train` (train only), and `eval` (eval only).
+
+- End-to-end (train → eval):
+
+```
+docker compose up --build app
+```
+
+- Override epochs or device at runtime:
+
+```
+EPOCHS=5 DEVICE=cpu docker compose up app
+```
+
+- Train only:
+
+```
+EPOCHS=5 DEVICE=cpu docker compose up train
+```
+
+- Eval only:
+
+```
+DEVICE=cpu docker compose up eval
+```
+
+Notes:
+
+- Volumes mount `./artifacts` to `/app/artifacts` and your host `~/.torch/datasets` to `/root/.torch/datasets` inside the container.
+- `DEVICE` defaults to `cpu` and `EPOCHS` defaults to `5` if not set.
+- The compose file uses the same `mnist-cnn:cpu` image and sets `MPLBACKEND=Agg` for headless plotting.

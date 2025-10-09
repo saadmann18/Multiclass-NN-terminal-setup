@@ -1,0 +1,7 @@
+# Runtime dependencies for the MNIST CNN project
+# Pinning versions for reproducibility. These are CPU wheels.
+# If you want GPU support, do not use these CPU wheels; see README Docker section.
+torch==2.3.1
+torchvision==0.18.1
+tqdm==4.66.4
+matplotlib==3.8.4
