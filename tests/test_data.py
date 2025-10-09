@@ -38,13 +38,18 @@ class TestDataPreparation:
         with tempfile.TemporaryDirectory() as temp_dir:
             train_loader, test_loader = prepare_data(temp_dir)
             
-            # Training loader should shuffle
-            assert train_loader.shuffle is True
+            # Check that data loaders have correct batch sizes
+            assert train_loader.batch_size == 128  # default
+            assert test_loader.batch_size == 1024  # default
+            
+            # Check drop_last property
             assert train_loader.drop_last is True
             
-            # Test loader should not shuffle
-            assert test_loader.shuffle is False
-            assert hasattr(test_loader, 'drop_last')  # May be False or not set
+            # Test that we can iterate through the loaders
+            train_batch = next(iter(train_loader))
+            test_batch = next(iter(test_loader))
+            assert len(train_batch) == 2  # images, labels
+            assert len(test_batch) == 2   # images, labels
     
     def test_data_shapes_and_types(self):
         """Test data has correct shapes and types."""

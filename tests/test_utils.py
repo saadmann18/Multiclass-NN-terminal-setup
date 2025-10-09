@@ -33,9 +33,10 @@ class TestDeviceSelection:
         assert device.type == "cpu"  # Should fallback to CPU
     
     @patch('torch.backends.mps.is_available')
-    @patch('torch.backends')
-    def test_select_device_mps_available(self, mock_backends, mock_mps_available):
+    @patch('src.mnist_cnn.utils.hasattr')
+    def test_select_device_mps_available(self, mock_hasattr, mock_mps_available):
         """Test MPS device selection when available."""
+        mock_hasattr.return_value = True  # MPS backend exists
         mock_mps_available.return_value = True
         
         device = select_device("mps")
@@ -50,23 +51,23 @@ class TestDeviceSelection:
         assert device.type == "cuda"
     
     @patch('torch.backends.mps.is_available')
-    @patch('torch.backends')
+    @patch('src.mnist_cnn.utils.hasattr')
     @patch('torch.cuda.is_available')
-    def test_select_device_auto_mps(self, mock_cuda_available, mock_backends, mock_mps_available):
+    def test_select_device_auto_mps(self, mock_cuda_available, mock_hasattr, mock_mps_available):
         """Test auto device selection falls back to MPS."""
         mock_cuda_available.return_value = False
+        mock_hasattr.return_value = True  # MPS backend exists
         mock_mps_available.return_value = True
         
         device = select_device("auto")
         assert device.type == "mps"
     
-    @patch('torch.backends.mps.is_available')
-    @patch('torch.backends')
+    @patch('src.mnist_cnn.utils.hasattr')
     @patch('torch.cuda.is_available')
-    def test_select_device_auto_cpu(self, mock_cuda_available, mock_backends, mock_mps_available):
+    def test_select_device_auto_cpu(self, mock_cuda_available, mock_hasattr):
         """Test auto device selection falls back to CPU."""
         mock_cuda_available.return_value = False
-        mock_mps_available.return_value = False
+        mock_hasattr.return_value = False  # No MPS available
         
         device = select_device("auto")
         assert device.type == "cpu"
