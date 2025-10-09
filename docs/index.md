@@ -35,12 +35,10 @@ mnist-cnn/
 - **Configurable**: YAML-based configuration management
 - **Well Tested**: Comprehensive test suite with >90% coverage
 - **Dockerized**: Ready-to-use Docker setup
-- **Documentation**: Complete API documentation and tutorials
+- **Documentation**: Complete API
 
 ## Navigation
 
-- [Installation Guide](installation.md)
-- [API Reference](api/index.md)
-- [Tutorials](tutorials/index.md)
-- [Configuration](configuration.md)
-- [Development Guide](development.md)
+- [Installation Guide](installation.md) - Get started quickly
+- [Configuration Guide](configuration.md) - Customize your setup
+- [API Reference](api/index.md) - Detailed function documentation

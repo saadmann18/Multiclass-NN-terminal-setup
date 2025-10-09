@@ -97,21 +97,18 @@ print(mnist_cnn.__version__)
 
 # Run a quick test
 from mnist_cnn import CNN
-model = CNN(n_channels=1)
 print("Installation successful!")
 ```
 
 ## Troubleshooting
 
-### Common Issues
+For common issues:
 
-1. **Import Error**: Make sure you're in the correct virtual environment
-2. **CUDA Issues**: Verify CUDA version compatibility with PyTorch
-3. **Memory Issues**: Reduce batch size in configuration
-4. **Permission Issues**: Use `sudo` for system-wide installation (not recommended)
+- **Import errors**: Make sure you installed the package with `pip install -e .`
+- **CUDA issues**: Verify CUDA installation and PyTorch compatibility
+- **Memory errors**: Reduce batch size in configuration
 
 ### Getting Help
 
-- Check the [FAQ](faq.md)
 - Open an issue on GitHub
 - Check PyTorch installation guide for GPU-specific issues
