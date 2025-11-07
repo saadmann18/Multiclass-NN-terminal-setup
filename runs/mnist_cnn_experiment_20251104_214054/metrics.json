@@ -1,0 +1,8 @@
+{
+  "hparam/final_train_loss": 0.0,
+  "hparam/final_val_loss": 0.0,
+  "hparam/final_val_accuracy": 0.0,
+  "hparam/best_val_accuracy": 0.0,
+  "hparam/final_epoch": 1,
+  "hparam/best_val_loss": 0.9584321535110474
+}

@@ -1,0 +1,18 @@
+{
+  "batch_size": 256,
+  "learning_rate": 0.1,
+  "weight_decay": 0.0001,
+  "momentum": 0.9,
+  "grad_accumulation_steps": 1,
+  "clip_grad_norm": 1.0,
+  "use_amp": true,
+  "epochs": 20,
+  "warmup_epochs": 5,
+  "optimizer": "SGD",
+  "model": "CNN",
+  "experiment_name": "mnist_cnn_experiment_20251104_214054",
+  "device": "cuda",
+  "num_workers": 8,
+  "pin_memory": true,
+  "dropout": 0.0
+}

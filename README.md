@@ -44,10 +44,7 @@ mnist-cnn/
 │   ├── configuration.md    # Configuration guide
 │   └── api/                # API documentation
 ├── scripts/                # Utility scripts
-│   ├── setup_environment.sh    # Environment setup
-│   ├── train_model.py          # Advanced training script
-│   ├── evaluate_model.py       # Advanced evaluation script
-│   └── run_experiments.py      # Experiment runner
+│   └── setup_environment.sh    # Environment setup
 ├── artifacts/              # Model outputs and results
 ├── logs/                   # Training and evaluation logs
 ├── experiments/            # Experiment results
@@ -178,21 +175,37 @@ mnist-train --epochs 20 --learning-rate 0.001 --device cuda
 
 ## 🧪 Running Experiments
 
-Use the experiment runner to test different hyperparameters:
-
+### Training
 ```bash
-# Run predefined experiments
-python scripts/run_experiments.py
+# Basic training
+python trainer.py --epochs 10 --log-dir runs/exp1 --experiment-name exp1
 
-# Run custom experiments from JSON file
-python scripts/run_experiments.py --experiments-file my_experiments.json
-
-# Advanced training with logging
-python scripts/train_model.py --experiment-name high_lr_test --epochs 20 --learning-rate 0.05
-
-# Detailed evaluation with analysis
-python scripts/evaluate_model.py --experiment-name high_lr_test --save-results
+# With model compilation (PyTorch 2.0+)
+python trainer.py --epochs 20 --log-dir runs/exp2 --experiment-name exp2 --compile
 ```
+
+### TensorBoard Visualization
+```bash
+# Start TensorBoard
+tensorboard --logdir=runs
+
+# Open in browser: http://localhost:6006
+```
+
+### Available Visualizations
+- **HParams comparison** (parallel coordinates, scatter plots) ✨ NEW!
+- **Training and validation metrics** (accuracy, loss, precision, recall, F1)
+- **Model architecture** (computational graph)
+- **Confusion matrices** (train/val)
+- **ROC and PR curves** (multiclass)
+- **Weight & gradient distributions/histograms**
+- **Gradient norms** (monitor for vanishing/exploding gradients)
+- **Weight statistics** (mean, std, min, max per layer)
+- **Activation maps** (visualize layer outputs)
+- **Feature space visualization** (T-SNE)
+- **Hardware utilization** (CPU, GPU, memory)
+
+📖 See [TENSORBOARD_FEATURES.md](TENSORBOARD_FEATURES.md) for complete documentation.
 
 ## 🐳 Docker Usage
 

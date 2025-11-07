@@ -5,7 +5,7 @@ Tests for utility functions.
 import torch
 import pytest
 from unittest.mock import patch, MagicMock
-from src.mnist_cnn.utils import select_device, setup_device_optimizations
+from src.utils import select_device, setup_device_optimizations
 
 
 class TestDeviceSelection:

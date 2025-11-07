@@ -7,7 +7,7 @@ import tempfile
 import yaml
 import pytest
 from pathlib import Path
-from src.mnist_cnn.config import Config
+from src.config import Config
 
 
 class TestConfig:

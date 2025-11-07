@@ -7,7 +7,7 @@ import tempfile
 import torch
 import pytest
 from torch.utils.data import DataLoader
-from src.mnist_cnn.data import prepare_data
+from src.data import prepare_data
 
 
 class TestDataPreparation:

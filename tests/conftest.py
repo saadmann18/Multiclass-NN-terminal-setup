@@ -37,7 +37,7 @@ def sample_config():
 @pytest.fixture
 def dummy_model():
     """Create a dummy CNN model for testing."""
-    from src.mnist_cnn.model import CNN
+    from src.model import CNN
 
     return CNN(n_channels=1)
 

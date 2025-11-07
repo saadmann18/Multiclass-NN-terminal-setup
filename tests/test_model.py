@@ -4,7 +4,7 @@ Tests for CNN model.
 
 import torch
 import pytest
-from src.mnist_cnn.model import CNN
+from src.model import CNN
 
 
 class TestCNN:

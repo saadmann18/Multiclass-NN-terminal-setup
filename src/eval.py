@@ -3,8 +3,12 @@ Evaluation utilities for MNIST CNN model.
 """
 
 import os
+import warnings
 from typing import Tuple, Optional, Union
 from contextlib import nullcontext
+
+# Suppress multiprocessing import warnings
+warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
 
 import torch
 from torch.nn import CrossEntropyLoss
@@ -192,7 +196,7 @@ def plot_confusion_matrix(
     return save_path
 
 
-def run_evaluation(
+def main(
     device_preference: str = "auto",
     checkpoint_path: Optional[str] = None,
     show_plot: bool = True,
@@ -225,7 +229,18 @@ def run_evaluation(
     model = CNN(n_channels=1).to(device)
 
     if checkpoint_path is None:
-        checkpoint_path = os.path.join(os.getcwd(), "artifacts", "model_mnist_cnn.pth")
+        # Look for the most recent training run
+        runs_dir = os.path.join(os.getcwd(), "runs")
+        if os.path.exists(runs_dir):
+            experiments = [d for d in os.listdir(runs_dir) if os.path.isdir(os.path.join(runs_dir, d))]
+            if experiments:
+                # Get most recent experiment
+                latest_exp = sorted(experiments)[-1]
+                checkpoint_path = os.path.join(runs_dir, latest_exp, "artifacts", "best_model.pth")
+            else:
+                checkpoint_path = os.path.join(os.getcwd(), "artifacts", "best_model.pth")
+        else:
+            checkpoint_path = os.path.join(os.getcwd(), "artifacts", "best_model.pth")
 
     if not os.path.isfile(checkpoint_path):
         raise FileNotFoundError(
@@ -233,11 +248,19 @@ def run_evaluation(
         )
 
     # Load checkpoint
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
-        model.load_state_dict(checkpoint["model_state_dict"])
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    if isinstance(checkpoint, dict):
+        # Handle different checkpoint formats
+        if "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+        elif "state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["state_dict"])
+        else:
+            # Assume the dict itself is the state dict
+            model.load_state_dict(checkpoint)
     else:
-        raise RuntimeError("Unexpected checkpoint format.")
+        # Direct state dict
+        model.load_state_dict(checkpoint)
 
     # Evaluate model
     accuracy, avg_loss, conf_mat, per_class_acc = evaluate_model(
@@ -257,7 +280,66 @@ def run_evaluation(
     # Plot confusion matrix
     plot_path = None
     if conf_mat is not None and HAS_MATPLOTLIB:
-        plot_path = os.path.join(os.getcwd(), "artifacts", "confusion_matrix.png")
+        # Create artifacts directory if it doesn't exist
+        artifacts_dir = os.path.join(os.getcwd(), "artifacts")
+        os.makedirs(artifacts_dir, exist_ok=True)
+        plot_path = os.path.join(artifacts_dir, "confusion_matrix.png")
         plot_confusion_matrix(conf_mat, save_path=plot_path, show=show_plot)
 
     return accuracy, avg_loss, conf_mat, per_class_acc, plot_path
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Evaluate MNIST CNN model')
+    parser.add_argument('--device', type=str, default='auto',
+                        help='Device to use: auto, cuda, mps, or cpu (default: auto)')
+    parser.add_argument('--checkpoint', type=str, default=None,
+                        help='Path to model checkpoint (default: latest in runs/)')
+    parser.add_argument('--data-dir', type=str, 
+                        default=os.path.expanduser('~/.torch/datasets/mnist'),
+                        help='Directory containing MNIST data')
+    parser.add_argument('--no-plot', action='store_true',
+                        help='Disable confusion matrix plot')
+    
+    args = parser.parse_args()
+    
+    print("=" * 70)
+    print("MNIST CNN EVALUATION")
+    print("=" * 70)
+    print(f"Device: {args.device}")
+    if args.checkpoint:
+        print(f"Checkpoint: {args.checkpoint}")
+    else:
+        print("Checkpoint: Auto-detect latest")
+    print(f"Data directory: {args.data_dir}")
+    print("-" * 70)
+    
+    try:
+        accuracy, avg_loss, conf_mat, per_class_acc, plot_path = main(
+            device_preference=args.device,
+            checkpoint_path=args.checkpoint,
+            show_plot=not args.no_plot,
+            data_dir=args.data_dir
+        )
+        
+        print("\n" + "=" * 70)
+        print("EVALUATION COMPLETED SUCCESSFULLY")
+        print("=" * 70)
+        print(f"Accuracy: {accuracy * 100:.2f}%")
+        print(f"Average Loss: {avg_loss:.4f}")
+        
+        if per_class_acc is not None:
+            print("\nPer-class Accuracy:")
+            for i, acc in enumerate(per_class_acc):
+                print(f"  Digit {i}: {acc * 100:6.2f}%")
+        
+        if plot_path:
+            print(f"\nConfusion matrix saved to: {plot_path}")
+        print("=" * 70)
+            
+    except Exception as e:
+        print(f"\nError during evaluation: {str(e)}")
+        import sys
+        sys.exit(1)
